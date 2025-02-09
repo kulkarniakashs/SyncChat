@@ -1,20 +1,36 @@
 import websocket,{WebSocketServer} from 'ws';
 import {data,types,createAccount} from "@repo/types"
-import { PrismaClient } from '@prisma/client';
+import { prisma } from '@repo/prisma';
 import { isAdmin } from './func';
-
+import jwt, {JwtPayload} from "jsonwebtoken";
+const SECRET_KEY = process.env.SECRET_KEY;
+interface UserPayload extends JwtPayload{
+    username : string
+    email : string
+}
+interface customWS extends websocket{
+    user : UserPayload
+}
 const wss = new WebSocketServer({port: 8080});
-const prisma = new PrismaClient()
-wss.on('connection',function(ws){
+wss.on('connection',async function(ws:customWS,request:any){
     console.log("new Clinet connected")
-    ws.on('message',async function(rawDAta,isBinary){
+    let token = new URL(request.url!, `http://${request.headers.host}`).searchParams.get("token");
+
+    if (!token) {
+      ws.close(4001, "Token required");
+      return;
+    }
+  
+    try {
+      console.log("token:",token)
+      const user: UserPayload = jwt.verify(token,'secret') as UserPayload;
+      console.log(user)
+      ws.user = user; // ✅ TypeScript will now recognize 'user'
+      console.log("User connected:", user);
+  
+      ws.on('message',async function(rawDAta,isBinary){
         let rawText = rawDAta.toString();
         let data: data= JSON.parse(rawText);
-        console.log("types :" ,types)
-        console.log(types.createAccount)
-        console.log(data)
-        console.log("swicthc message ,",data)
-        console.log(types.createAccount == data.kind)
         switch (data.kind){
             case types.createAccount:
                 console.log("reached create account")
@@ -103,7 +119,7 @@ wss.on('connection',function(ws){
             }   break;
             case types.removeUser :{
                 try {
-                    let isAdmin1 : boolean = await isAdmin(data.userid,data.groupid)
+                    let isAdmin1 : boolean = await isAdmin(ws.user.username,data.groupid)
                     console.log("isAdmin",isAdmin1)
                    if(isAdmin1){
                        await prisma.memberships.delete({
@@ -153,4 +169,9 @@ wss.on('connection',function(ws){
     ws.on('close',function(data){
         console.log("closed connection with one user")
     })
+  
+    } catch (error) {
+        console.log(error);
+      ws.close(4002, "Invalid token");
+    }
 })

@@ -13,14 +13,16 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
-    "@prisma/client": "^6.2.1",
+    "@repo/prisma": "^1.0.0",
     "@repo/types": "^1.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "styled-components": "^6.1.15",
     "ws": "^8.18.0"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.8",
     "@types/node": "^22.12.0",
     "@types/ws": "^8.5.14",
-    "prisma": "^6.2.1",
     "tsx": "^4.19.2",
     "typescript": "^5.7.3"
   }
