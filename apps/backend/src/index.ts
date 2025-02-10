@@ -5,7 +5,7 @@ import { isAdmin } from './func';
 import jwt, {JwtPayload} from "jsonwebtoken";
 const SECRET_KEY = process.env.SECRET_KEY;
 interface UserPayload extends JwtPayload{
-    username : string
+    userid : string
     email : string
 }
 interface customWS extends websocket{
@@ -60,11 +60,11 @@ wss.on('connection',async function(ws:customWS,request:any){
                     let response = await prisma.groups.create({
                         data : {
                             groupName : data.groupName ,
-                            adminId : data.userid,
+                            adminId : ws.user.userid,
                             About : data.groupAbout ,
                             members : {
                                 create : {
-                                    userid : data.userid
+                                    userid : ws.user.userid
                                 }
                             }
                         }
@@ -87,7 +87,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                     let response =await prisma.groups.findMany({
                         where : {
                             groupid : data.groupid,
-                            adminId : data.adminId
+                            adminId : ws.user.userid
                         },
                         select: {
                             adminId : true
@@ -119,7 +119,7 @@ wss.on('connection',async function(ws:customWS,request:any){
             }   break;
             case types.removeUser :{
                 try {
-                    let isAdmin1 : boolean = await isAdmin(ws.user.username,data.groupid)
+                    let isAdmin1 : boolean = await isAdmin(ws.user.userid,data.groupid)
                     console.log("isAdmin",isAdmin1)
                    if(isAdmin1){
                        await prisma.memberships.delete({
@@ -149,7 +149,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                     await prisma.memberships.delete({
                         where : {
                             userid_groupid : {
-                                userid : data.userid,
+                                userid : ws.user.userid,
                                 groupid : data.groupid
                             }
                         }

@@ -27,20 +27,17 @@ export interface removeUser {
 export interface addInGroup {
     kind : types.addInGroup,
     groupid : string,
-    adminId : string,
     addUser : string
 }
 
 export interface leaveGroup {
     kind : types.leaveGroup,
-    userid : string
     groupid : string
 }
 
 export interface createGroup {
     kind : types.createGroup,
     groupName : string,
-    userid : string,
     groupAbout : string
 }
 
