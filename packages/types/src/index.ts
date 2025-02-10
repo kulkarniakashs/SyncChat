@@ -9,13 +9,11 @@ export enum types {
 }
 
 
-export type data =sendMessage| removeUser | addInGroup |  createGroup | leaveGroup | createAccount;
+export type data =  reportActive| sendMessage| removeUser | addInGroup |  createGroup | leaveGroup | createAccount;
 
 export interface sendMessage {
     kind : types.sendMessage
-    groupid : string;
-    content : string,
-    time : Date
+    message : message
 }
 
 export interface removeUser {
@@ -45,4 +43,15 @@ export interface createAccount {
     kind : types.createAccount
     fullName : string
     email : string
+}
+
+export interface message {
+    text : string,
+    time : Date,
+    authorid : string,
+    groupid : string
+}
+
+export interface reportActive {
+    kind : types.reportActive
 }

@@ -1,8 +1,13 @@
 import websocket,{WebSocketServer} from 'ws';
 import {data,types,createAccount} from "@repo/types"
 import { prisma } from '@repo/prisma';
-import { isAdmin } from './func';
+import { isAdmin, listGroups } from './func';
 import jwt, {JwtPayload} from "jsonwebtoken";
+import PubSubManager from './PubSubManager';
+import {createClient} from "redis"
+const redisClient = createClient();
+redisClient.connect();
+const PubSub = PubSubManager.getInstance();
 const SECRET_KEY = process.env.SECRET_KEY;
 interface UserPayload extends JwtPayload{
     userid : string
@@ -11,7 +16,7 @@ interface UserPayload extends JwtPayload{
 interface customWS extends websocket{
     user : UserPayload
 }
-const wss = new WebSocketServer({port: 8080});
+const wss = new WebSocketServer({port: 8083});
 wss.on('connection',async function(ws:customWS,request:any){
     console.log("new Clinet connected")
     let token = new URL(request.url!, `http://${request.headers.host}`).searchParams.get("token");
@@ -162,6 +167,21 @@ wss.on('connection',async function(ws:customWS,request:any){
                     }),{binary: isBinary})
                 }
                 break;
+            }
+
+            case types.reportActive : {
+                const list = await listGroups(ws.user.userid);
+                list.forEach(obj => {
+                    PubSub.userSubscribe(ws,obj.groupid);
+                })
+                PubSub.getInfo()
+                break;
+            }
+
+            case types.sendMessage : {
+                console.log("in message send")
+                let msg = JSON.stringify(data.message)
+                redisClient.publish(data.message.groupid,msg) ;             
             }
         }
     })

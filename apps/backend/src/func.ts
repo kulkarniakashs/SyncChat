@@ -16,3 +16,16 @@ export async function isAdmin(userid :string |undefined,groupid : string | undef
     }
     return false;   
 }
+
+export async function listGroups(userid : string){
+    const list = await prisma.memberships.findMany({
+        where : {
+            userid : userid
+        },
+        select : {
+            groupid  : true
+        }
+    })
+    console.log(list)
+    return list;
+}

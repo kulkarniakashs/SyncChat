@@ -16,6 +16,7 @@
     "@repo/prisma": "^1.0.0",
     "@repo/types": "^1.0.0",
     "jsonwebtoken": "^9.0.2",
+    "redis": "^4.7.0",
     "styled-components": "^6.1.15",
     "ws": "^8.18.0"
   },
