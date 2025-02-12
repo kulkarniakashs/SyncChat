@@ -1,22 +1,14 @@
-import websocket,{WebSocketServer} from 'ws';
-import {data,types,createAccount} from "@repo/types"
+import {WebSocketServer} from 'ws';
+import {data,types,UserPayload,customWS, GroupInfo,sendGroupList, sendTypes,sendAddedinGr, sendData, chat} from "@repo/types"
 import { prisma } from '@repo/prisma';
-import { isAdmin, listGroups } from './func';
-import jwt, {JwtPayload} from "jsonwebtoken";
+import { isAdmin, listGroups, listGroupsWithInfo } from './func';
+import jwt from "jsonwebtoken";
 import PubSubManager from './PubSubManager';
 import {createClient} from "redis"
 const redisClient = createClient();
 redisClient.connect();
 const PubSub = PubSubManager.getInstance();
-const SECRET_KEY = process.env.SECRET_KEY;
-interface UserPayload extends JwtPayload{
-    userid : string
-    email : string
-}
-interface customWS extends websocket{
-    user : UserPayload
-}
-const wss = new WebSocketServer({port: 8083});
+const wss = new WebSocketServer({port: 8080});
 wss.on('connection',async function(ws:customWS,request:any){
     console.log("new Clinet connected")
     let token = new URL(request.url!, `http://${request.headers.host}`).searchParams.get("token");
@@ -32,7 +24,15 @@ wss.on('connection',async function(ws:customWS,request:any){
       console.log(user)
       ws.user = user; // ✅ TypeScript will now recognize 'user'
       console.log("User connected:", user);
-  
+      ws.user.list = await listGroupsWithInfo(ws.user.userid);
+      ws.user.list.forEach(obj => {
+          PubSub.userSubscribe(ws,obj.groupid);
+      })
+      ws.send(JSON.stringify({
+        kind : sendTypes.groupList,
+        groupList: ws.user.list
+      } as sendData))
+      PubSub.getInfo()
       ws.on('message',async function(rawDAta,isBinary){
         let rawText = rawDAta.toString();
         let data: data= JSON.parse(rawText);
@@ -72,12 +72,39 @@ wss.on('connection',async function(ws:customWS,request:any){
                                     userid : ws.user.userid
                                 }
                             }
+                        },
+                        select : {
+                            groupid : true,
+                            groupName : true,
+                            About : true,
+                            Admin : {
+                                select : {
+                                    userid : true,
+                                    fullname : true,
+                                }
+                            },
+                            members : {
+                                select : {
+                                    joinedAt : true
+                                }
+                            }
                         }
                     })
+
+                    let groupInfo : GroupInfo = {
+                        About : response.About,
+                        groupid : response.groupid,
+                        groupName : response.groupName,
+                        adminid : response.Admin.userid,
+                        adminname : response.Admin.fullname,
+                        joinedAt : response.members[0]?.joinedAt
+                    }
+                    ws.user.list.push(groupInfo);
                     console.log("response of group create",response)
                     ws.send(JSON.stringify({
-                        msg : "Group has been Successfull created"
-                    }))
+                        kind : sendTypes.createdGroup,
+                        groupInfo : {...groupInfo}
+                    } as sendData))
                 }catch(e:any){
                     console.log(e)
                     ws.send(JSON.stringify({
@@ -104,17 +131,51 @@ wss.on('connection',async function(ws:customWS,request:any){
                         break;
                     }
                     console.log(data)
-                    console.log("admin adding user")
-                    let r1 = await prisma.memberships.create({
+                    console.log("admin adding user") 
+                    let temp = await prisma.memberships.create({
                         data : {
                             groupid : data.groupid ,
                             userid : data.addUser
+                        },
+                        select : {
+                            joinedAt : true,
+                            Group : {
+                                select : {
+                                    groupid : true,
+                                    groupName : true,
+                                    About : true,
+                                    Admin : {
+                                        select : {
+                                            userid : true,
+                                            fullname : true,   
+                                        }
+                                    }
+                                }
+                            }
                         }
                     })
-                    console.log("r1",r1)
+                    let groupInfo : GroupInfo = {
+                        groupid : temp.Group.groupid,
+                        groupName : temp.Group.groupName,
+                        About : temp.Group.About,
+                        adminid : temp.Group.Admin.userid,
+                        adminname : temp.Group.Admin.fullname,
+                        joinedAt : temp.joinedAt
+                    }
+                    console.log("temp",temp)           
+                    let addws = [...wss.clients].find((ws ) => (ws as customWS).user.userid === data.addUser);
+                    if(addws){
+                        PubSub.userSubscribe(addws as customWS,data.groupid);
+                        (addws as customWS).user.list.push(groupInfo);
+                        addws.send(JSON.stringify({
+                            kind : sendTypes.addedInGroup,
+                            groupInfo : {...groupInfo}
+                        } as sendData ))
+                        PubSub.getInfo();
+                    }
                     ws.send(JSON.stringify({
-                        msg : "user successfully added in group"
-                    }))
+                        groupInfo : {...groupInfo}
+                    })) 
                 }catch(e:any){
                     console.log(e)
                     ws.send(JSON.stringify({
@@ -180,14 +241,26 @@ wss.on('connection',async function(ws:customWS,request:any){
 
             case types.sendMessage : {
                 console.log("in message send")
-                let msg = JSON.stringify(data.message)
-                redisClient.publish(data.message.groupid,msg) ;             
+                data.message.authorid = ws.user.userid;
+                data.message.fullname = ws.user.fullname;
+                console.log(data.message)
+                let msg = JSON.stringify({
+                   kind : sendTypes.chat,
+                   message : data.message
+                } as sendData)
+                redisClient.publish(data.message.groupid,msg);
+                redisClient.lPush('msg_queue',JSON.stringify(data.message))
+                break;        
             }
         }
     })
 
     ws.on('close',function(data){
         console.log("closed connection with one user")
+        ws.user.list.forEach(obj => {
+            PubSub.userUnsubscribe(ws,obj.groupid);
+        })
+        PubSub.getInfo()
     })
   
     } catch (error) {

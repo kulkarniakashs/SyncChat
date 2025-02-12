@@ -1,3 +1,5 @@
+import { JwtPayload } from "jsonwebtoken";
+import websocket from 'ws'
 export enum types {
     createAccount,
     sendMessage,
@@ -49,9 +51,64 @@ export interface message {
     text : string,
     time : Date,
     authorid : string,
-    groupid : string
+    groupid : string,
+    fullname : string
 }
 
 export interface reportActive {
     kind : types.reportActive
+}    
+
+export interface UserPayload extends JwtPayload{
+    userid : string
+    email : string
+    fullname:string,
+    list : GroupInfo[]
+}
+export interface customWS extends websocket{
+    user : UserPayload
+}
+
+interface group{
+    groupid : string ,
+    groupAbout : string,
+    groupName : string
+}
+
+export enum sendTypes {
+    groupList,
+    addedInGroup,
+    createdGroup,
+    chat
+}
+
+export interface GroupInfo {
+    groupid: string;
+    groupName: string;
+    About: string;
+    adminid: string;
+    adminname: string;
+    joinedAt: Date | undefined;
+}
+
+export type sendData = sendAddedinGr | sendCreatedGr | sendGroupList | chat
+
+export interface sendAddedinGr {
+    kind : sendTypes.addedInGroup,
+    groupInfo : GroupInfo
+}
+
+export interface sendCreatedGr {
+    kind : sendTypes.createdGroup
+    groupInfo : GroupInfo
+}
+
+export interface sendGroupList {
+    kind : sendTypes.groupList,
+    groupList : GroupInfo[]
+}
+
+export interface chat {
+    kind : sendTypes.chat,
+    message : message
 }

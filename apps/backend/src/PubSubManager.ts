@@ -1,8 +1,6 @@
 import {createClient, RedisClientType} from "redis"
-import { message } from "@repo/types";
 import websocket from "ws";
 import {JwtPayload} from "jsonwebtoken";
-import { writeSync } from "fs";
 interface UserPayload extends JwtPayload{
     userid : string
     email : string
@@ -42,11 +40,18 @@ export default class PubSubManager {
     }
 
     public userUnsubscribe(userws : customWS,groupid : string){
-        this.subscription.set(groupid,this.subscription.get(groupid) || [].filter(id => id != userws))
-        if(this.subscription.get(groupid)?.length === 0){
-            this.redisClient.unsubscribe(groupid);
-            console.log("unsubcribed to",groupid);
+        let list = this.subscription.get(groupid);
+        if(list){
+            list = list.filter(ws => ws!=userws)
+            this.subscription.set(groupid,list)
+            if(list.length === 0){
+                this.redisClient.unsubscribe(groupid)
+                this.subscription.delete(groupid)
+                console.log("unubscribed from(0 memebers active)",groupid)
+            }
         }
+        console.log("After unbuscrive ")
+        this.subscription.get(groupid)?.forEach(ws=> console.log(ws.user.email))
     }
 
     private handleMessage(groupid : string, message: string){

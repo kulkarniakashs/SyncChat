@@ -16,7 +16,8 @@ export async function checkUser() {
             },
             select : {
                 userid : true,
-                email : true
+                email : true,
+                fullname : true
             }
         })
         if(user){
@@ -32,7 +33,8 @@ export async function checkUser() {
             },
             select : {
                 userid : true,
-                email : true
+                email : true,
+                fullname : true
             }
         })     
         if(createUser) {

@@ -1,22 +1,16 @@
 {
-  "name": "@repo/types",
+  "name": "msg_worker",
   "version": "1.0.0",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "esbuild ./src/index.js --bundle --platform=node --outfile=./dist/index.js",
     "start": "node ./dist/index.js",
-    "dev": "nodemon --exec \"npm run build && npm run start\" --watch ./src"
-  },
-  "exports": {
-    ".": "./src/index.ts"
+    "dev": "nodemon --exec \"npm run build && npm run start\" --watch ./src/index.ts"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "description": "",
-  "dependencies": {
-    "@types/ws": "^8.5.14",
-    "jsonwebtoken": "^9.0.2"
-  }
+  "type": "commonjs"
 }
