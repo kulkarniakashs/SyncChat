@@ -7,11 +7,18 @@ export enum types {
     leaveGroup,
     reportActive,
     createGroup,
-    removeUser
+    removeUser,
+    createPrivateChat
 }
 
 
-export type data =  reportActive| sendMessage| removeUser | addInGroup |  createGroup | leaveGroup | createAccount;
+export type data =  reportActive| sendMessage| removeUser | addInGroup |  createGroup | leaveGroup | createAccount | createPrivateChat;
+
+export interface createPrivateChat{
+    kind : types.createPrivateChat,
+    userid : string,
+    fullname : string
+}
 
 export interface sendMessage {
     kind : types.sendMessage
@@ -79,7 +86,13 @@ export enum sendTypes {
     groupList,
     addedInGroup,
     createdGroup,
-    chat
+    chat,
+    sendError,
+    reportRemoved,
+    successfullyRemoved,
+    leftGroup,
+    addminNotificationAddedUser,
+    informActive
 }
 
 export interface GroupInfo {
@@ -89,9 +102,38 @@ export interface GroupInfo {
     adminid: string;
     adminname: string;
     joinedAt: Date | undefined;
+    members : member[],
+    isPrivate : boolean
 }
 
-export type sendData = sendAddedinGr | sendCreatedGr | sendGroupList | chat
+export type sendData = sendAddedinGr | sendCreatedGr | sendGroupList | chat | sendError | reportRemoved | successfullyRemoved | leftGroup | addminNotificationAddedUser 
+
+
+export interface addminNotificationAddedUser {
+    kind : sendTypes.addminNotificationAddedUser,
+    groupid : string,
+    groupName : string,
+    userid : string,
+    fullname : string
+}
+
+export interface leftGroup{
+    kind : sendTypes.leftGroup,
+    groupid : string,
+    groupName : string
+}
+
+export interface successfullyRemoved {
+    kind : sendTypes.successfullyRemoved,
+    groupid : string,
+    deleteUser : string,
+    delName : string 
+}
+
+export interface reportRemoved {
+    kind : sendTypes.reportRemoved,
+    groupid : string
+}
 
 export interface sendAddedinGr {
     kind : sendTypes.addedInGroup,
@@ -111,4 +153,14 @@ export interface sendGroupList {
 export interface chat {
     kind : sendTypes.chat,
     message : message
+}
+
+export interface sendError {
+    kind : sendTypes.sendError,
+    msg : string
+}
+
+export interface member {
+    userid : string,
+    fullname : string
 }

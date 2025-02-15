@@ -32,6 +32,7 @@ model Groups{
   adminId String
   messages Messages[]
   members Memberships[]
+  isPrivate Boolean @default(false)
 }
 
 model Memberships{
@@ -47,7 +48,7 @@ model Memberships{
 model Messages {
   messageid String @id @default(uuid())
   content String
-  sentAt DateTime @default(now())
+  time DateTime @default(now())
   group Groups @relation(fields: [groupid],references: [groupid])
   groupid String
   author Users @relation(fields: [authorid],references: [userid])

@@ -1,7 +1,7 @@
 import {WebSocketServer} from 'ws';
-import {data,types,UserPayload,customWS, GroupInfo,sendGroupList, sendTypes,sendAddedinGr, sendData, chat} from "@repo/types"
+import {data,types,UserPayload,customWS, GroupInfo, sendTypes, sendData} from "@repo/types"
 import { prisma } from '@repo/prisma';
-import { isAdmin, listGroups, listGroupsWithInfo } from './func';
+import { isAdmin, listGroups, listGroupsWithInfo,isAdminAndisPrivate } from './func';
 import jwt from "jsonwebtoken";
 import PubSubManager from './PubSubManager';
 import {createClient} from "redis"
@@ -54,9 +54,9 @@ wss.on('connection',async function(ws:customWS,request:any){
                     console.log(e)
                     // ws.send(e)
                     ws.send(JSON.stringify({
-                        code : e.code,
-                        meta : e.meta
-                    }))
+                        kind : sendTypes.sendError,
+                        msg :`code${e.code} error at ${e.meta}`
+                    } as sendData))
                 }
                 break;
             case types.createGroup: {
@@ -77,6 +77,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                             groupid : true,
                             groupName : true,
                             About : true,
+                            isPrivate : true,
                             Admin : {
                                 select : {
                                     userid : true,
@@ -97,7 +98,9 @@ wss.on('connection',async function(ws:customWS,request:any){
                         groupName : response.groupName,
                         adminid : response.Admin.userid,
                         adminname : response.Admin.fullname,
-                        joinedAt : response.members[0]?.joinedAt
+                        joinedAt : response.members[0]?.joinedAt,
+                        isPrivate : response.isPrivate,
+                        members : [{userid : ws.user.userid,fullname:ws.user.fullname}],
                     }
                     ws.user.list.push(groupInfo);
                     console.log("response of group create",response)
@@ -108,34 +111,27 @@ wss.on('connection',async function(ws:customWS,request:any){
                 }catch(e:any){
                     console.log(e)
                     ws.send(JSON.stringify({
+                        kind : sendTypes.sendError,
                         msg :`code${e.code} error at ${e.meta}`
-                    }),{binary: isBinary})
+                    } as sendData),{binary: isBinary})
                 } 
                 break;
             }
             case types.addInGroup :{
                 try {
                     console.log("in addInGroup")
-                    let response =await prisma.groups.findMany({
-                        where : {
-                            groupid : data.groupid,
-                            adminId : ws.user.userid
-                        },
-                        select: {
-                            adminId : true
-                        }
-                    })
-                    console.log("adminId is : ",response)
-                    if(response.length == 0){
-                        ws.send(JSON.stringify({msg : "you are not admin"}));
+                    if(! await isAdminAndisPrivate(ws.user.userid,data.groupid,ws.user.list)){
+                        ws.send(JSON.stringify({
+                            kind : sendTypes.sendError,
+                            msg : "You are not a admin or this is private chat."
+                        } as sendData))
                         break;
                     }
-                    console.log(data)
-                    console.log("admin adding user") 
                     let temp = await prisma.memberships.create({
                         data : {
                             groupid : data.groupid ,
-                            userid : data.addUser
+                            userid : data.addUser,
+                            
                         },
                         select : {
                             joinedAt : true,
@@ -144,10 +140,21 @@ wss.on('connection',async function(ws:customWS,request:any){
                                     groupid : true,
                                     groupName : true,
                                     About : true,
+                                    isPrivate : true,
                                     Admin : {
                                         select : {
                                             userid : true,
                                             fullname : true,   
+                                        }
+                                    },
+                                    members : {
+                                        select : {
+                                            member : {
+                                                select : {
+                                                    userid : true,
+                                                    fullname : true,
+                                                }
+                                            }  
                                         }
                                     }
                                 }
@@ -160,7 +167,9 @@ wss.on('connection',async function(ws:customWS,request:any){
                         About : temp.Group.About,
                         adminid : temp.Group.Admin.userid,
                         adminname : temp.Group.Admin.fullname,
-                        joinedAt : temp.joinedAt
+                        joinedAt : temp.joinedAt,
+                        members : temp.Group.members.map(mem => mem.member),
+                        isPrivate : temp.Group.isPrivate
                     }
                     console.log("temp",temp)           
                     let addws = [...wss.clients].find((ws ) => (ws as customWS).user.userid === data.addUser);
@@ -174,20 +183,24 @@ wss.on('connection',async function(ws:customWS,request:any){
                         PubSub.getInfo();
                     }
                     ws.send(JSON.stringify({
-                        groupInfo : {...groupInfo}
-                    })) 
+                       kind : sendTypes.addminNotificationAddedUser,
+                       groupid: groupInfo.groupid,
+                       groupName : groupInfo.groupName,
+                       userid :data.addUser,
+                       fullname : (addws as customWS).user.fullname
+                    } as sendData)) 
                 }catch(e:any){
-                    console.log(e)
                     ws.send(JSON.stringify({
+                        kind : sendTypes.sendError,
                         msg :JSON.stringify(e)
-                    }),{binary: isBinary})
+                    } as sendData),{binary: isBinary})
                 }
             }   break;
             case types.removeUser :{
                 try {
-                    let isAdmin1 : boolean = await isAdmin(ws.user.userid,data.groupid)
+                    let isAdmin1 : boolean = await isAdmin(ws.user.userid,data.groupid,ws.user.list);
                     console.log("isAdmin",isAdmin1)
-                   if(isAdmin1){
+                    if(isAdmin1){
                        await prisma.memberships.delete({
                         where : {
                             userid_groupid: { 
@@ -196,7 +209,11 @@ wss.on('connection',async function(ws:customWS,request:any){
                             }
                         }
                        })
-                       ws.send(JSON.stringify({msg : "User has been successfully deleted"}))
+                    let removeUser : customWS = [...wss.clients].find((val) => (val as customWS).user.userid === data.delUser) as customWS;
+                    removeUser.send(JSON.stringify({kind: sendTypes.reportRemoved , groupid : data.groupid} as sendData))
+                    PubSub.userUnsubscribe(removeUser,data.groupid);
+                    ws.send(JSON.stringify({kind : sendTypes.successfullyRemoved,deleteUser: data.delUser,delName:removeUser.user.fullname,groupid:data.groupid}as sendData))
+                    break;
                    }
                    else {
                     throw new Error("You are not admin")
@@ -204,28 +221,38 @@ wss.on('connection',async function(ws:customWS,request:any){
                 }catch(e:any){
                     console.log(e)
                     ws.send(JSON.stringify({
+                        kind: sendTypes.sendError,
                         msg :JSON.stringify(e)
-                    }),{binary: isBinary})
+                    }as sendData),{binary: isBinary})
                 }
                 break;
             }
 
             case types.leaveGroup : {
                 try {
-                    await prisma.memberships.delete({
+                    let response = await prisma.memberships.delete({
                         where : {
                             userid_groupid : {
                                 userid : ws.user.userid,
                                 groupid : data.groupid
                             }
+                        },
+                        select : {
+                            Group : {
+                                select : {
+                                    groupid : true,
+                                    groupName : true
+                                }
+                            }
                         }
-                    })
-                    ws.send(JSON.stringify({msg : "You successfully left the group"}))
+                })
+                ws.send(JSON.stringify({kind : sendTypes.leftGroup,...response.Group} as sendData))
                 }catch(e:any){
                     console.log(e)
                     ws.send(JSON.stringify({
+                        kind : sendTypes.sendError,
                         msg :JSON.stringify(e)
-                    }),{binary: isBinary})
+                    } as sendData),{binary: isBinary})
                 }
                 break;
             }
@@ -240,6 +267,14 @@ wss.on('connection',async function(ws:customWS,request:any){
             }
 
             case types.sendMessage : {
+                let gr = ws.user.list.find(val => val.groupid === data.message.groupid)
+                if(!gr){
+                    ws.send(JSON.stringify({
+                        kind : sendTypes.sendError,
+                        msg : "You are not in group"
+                    } as sendData))
+                    break;
+                }
                 console.log("in message send")
                 data.message.authorid = ws.user.userid;
                 data.message.fullname = ws.user.fullname;
@@ -251,6 +286,42 @@ wss.on('connection',async function(ws:customWS,request:any){
                 redisClient.publish(data.message.groupid,msg);
                 redisClient.lPush('msg_queue',JSON.stringify(data.message))
                 break;        
+            }
+
+            case types.createPrivateChat : {
+                let response = await prisma.groups.create({
+                    data : {
+                        groupName : ws.user.fullname + '&' + data.fullname,
+                        adminId : ws.user.userid,
+                        isPrivate : true,
+                        About: `${ws.user.fullname} & ${data.fullname}`,
+                        members : {
+                            createMany : {
+                                data : [
+                                    {userid : ws.user.userid},
+                                    {userid : data.userid}
+                                ]
+                            }
+                        }
+                    },
+                    select : {
+                        groupid : true,
+                        groupName : true,
+                        isPrivate : true,
+                        About : true,
+                        Admin : {
+                            select : {
+                                userid : true,
+                                fullname : true
+                            }
+                        },
+                        members : {
+                            select : {
+                                joinedAt : true,
+                            }
+                        }
+                    }
+                })
             }
         }
     })
@@ -264,7 +335,7 @@ wss.on('connection',async function(ws:customWS,request:any){
     })
   
     } catch (error) {
-        console.log(error);
+      console.log(error);
       ws.close(4002, "Invalid token");
     }
 })
