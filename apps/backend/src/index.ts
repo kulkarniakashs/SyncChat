@@ -1,10 +1,11 @@
 import {WebSocketServer} from 'ws';
-import {data,types,UserPayload,customWS, GroupInfo, sendTypes, sendData} from "@repo/types"
+import {data,types,UserPayload,customWS, GroupInfo, sendTypes, sendData, message} from "@repo/types"
 import { prisma } from '@repo/prisma';
 import { isAdmin, listGroups, listGroupsWithInfo,isAdminAndisPrivate } from './func';
 import jwt from "jsonwebtoken";
 import PubSubManager from './PubSubManager';
 import {createClient} from "redis"
+
 const redisClient = createClient();
 redisClient.connect();
 const PubSub = PubSubManager.getInstance();
@@ -317,11 +318,73 @@ wss.on('connection',async function(ws:customWS,request:any){
                         },
                         members : {
                             select : {
-                                joinedAt : true,
+                                member : {
+                                    select : {
+                                        userid : true,
+                                        fullname : true
+                                    }
+                                    
+                                },
+                                joinedAt : true
                             }
                         }
                     }
                 })
+                let grinfo : GroupInfo  = {
+                    About : response.About,
+                    adminid : response.Admin.userid,
+                    adminname : response.Admin.fullname,
+                    groupid : response.groupid,
+                    groupName : response.groupName,
+                    isPrivate : response.isPrivate,
+                    joinedAt : response.members[0]?.joinedAt,
+                    members : response.members.map(val=>val.member)
+                }
+                ws.send(JSON.stringify({
+                    kind : sendTypes.addedInGroup,
+                    groupInfo : grinfo
+                } as sendData))
+                break;
+            }
+
+            case types.fetchMessage :{
+                console.log('fetch request')
+                const response = await prisma.messages.findMany({
+                    where : {
+                        groupid : data.groupid
+                    },
+                    select : {
+                        content : true,
+                        time : true,
+                        author : {
+                            select : {
+                                userid : true,
+                                fullname : true
+                            }
+                        },
+                        groupid : true
+                    },
+                    take : 20,
+                    skip : data.skip,
+                    orderBy : {
+                        time : 'desc'
+                    }
+                })
+
+               const list : message[] = response.map(val=>{
+                let r : message = {
+                    time : val.time,
+                    authorid : val.author.userid,
+                    fullname : val.author.fullname,
+                    groupid : val.groupid,
+                    text : val.content
+                }
+                return r
+               })
+               ws.send(JSON.stringify({
+                kind: sendTypes.sendFetchedMsg,
+                messageList : list
+               } as sendData))
             }
         }
     })

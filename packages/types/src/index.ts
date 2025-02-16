@@ -8,11 +8,18 @@ export enum types {
     reportActive,
     createGroup,
     removeUser,
-    createPrivateChat
+    createPrivateChat,
+    fetchMessage
 }
 
 
-export type data =  reportActive| sendMessage| removeUser | addInGroup |  createGroup | leaveGroup | createAccount | createPrivateChat;
+export type data = fetchMessage| reportActive| sendMessage| removeUser | addInGroup |  createGroup | leaveGroup | createAccount | createPrivateChat;
+
+export interface fetchMessage{
+    kind : types.fetchMessage,
+    groupid : string,
+    skip : number
+}
 
 export interface createPrivateChat{
     kind : types.createPrivateChat,
@@ -92,7 +99,8 @@ export enum sendTypes {
     successfullyRemoved,
     leftGroup,
     addminNotificationAddedUser,
-    informActive
+    informActive,
+    sendFetchedMsg
 }
 
 export interface GroupInfo {
@@ -106,7 +114,7 @@ export interface GroupInfo {
     isPrivate : boolean
 }
 
-export type sendData = sendAddedinGr | sendCreatedGr | sendGroupList | chat | sendError | reportRemoved | successfullyRemoved | leftGroup | addminNotificationAddedUser 
+export type sendData = sendFetchedMsg |sendAddedinGr | sendCreatedGr | sendGroupList | chat | sendError | reportRemoved | successfullyRemoved | leftGroup | addminNotificationAddedUser 
 
 
 export interface addminNotificationAddedUser {
@@ -163,4 +171,9 @@ export interface sendError {
 export interface member {
     userid : string,
     fullname : string
+}
+
+export interface sendFetchedMsg {
+    kind : sendTypes.sendFetchedMsg,
+    messageList : message[]
 }
