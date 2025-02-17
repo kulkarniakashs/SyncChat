@@ -2,7 +2,11 @@
 import { prisma } from "@repo/prisma";
 import { currentUser } from "@clerk/nextjs/server";
 import  jwt from "jsonwebtoken";
-export async function checkUser() {
+export async function checkUser(): Promise<{token : string,user : {
+    userid : string,
+    fullname : string,
+    email : string
+}} | null> {
     const loggedUser = await currentUser();
 
     if(!loggedUser){
@@ -23,8 +27,8 @@ export async function checkUser() {
         if(user){
             console.log("userprinting ",user)
             let token =  jwt.sign(user,'secret');
-            return token;
-        } 
+            return {token: token, user: user};
+        }
         const createUser = await prisma.users.create({
             data : {
                 userid : loggedUser.id,
@@ -40,10 +44,12 @@ export async function checkUser() {
         if(createUser) {
             console.log("creatinguserprinting",createUser)
             let token = jwt.sign(createUser,'secret');
-            return token;
+            return {token, user :createUser};
         }
+        return null
     } catch (error) {
         console.log(error)
+        return null
     }
 
 }

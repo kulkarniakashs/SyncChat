@@ -13,9 +13,13 @@
   "dependencies": {
     "@clerk/nextjs": "^6.11.1",
     "@radix-ui/react-avatar": "^1.1.3",
+    "@radix-ui/react-dialog": "^1.1.6",
+    "@radix-ui/react-label": "^2.1.2",
     "@radix-ui/react-scroll-area": "^1.2.3",
     "@radix-ui/react-slot": "^1.1.2",
+    "@reduxjs/toolkit": "^2.5.1",
     "@repo/prisma": "^1.0.0",
+    "@repo/types": "^1.0.0",
     "@repo/ui": "*",
     "@tailwindcss/postcss": "^4.0.6",
     "class-variance-authority": "^0.7.1",
@@ -25,6 +29,7 @@
     "next": "^15.1.6",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "react-redux": "^9.2.0",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7"
   },

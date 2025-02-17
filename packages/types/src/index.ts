@@ -41,7 +41,8 @@ export interface removeUser {
 export interface addInGroup {
     kind : types.addInGroup,
     groupid : string,
-    addUser : string
+    groupName : string,
+    addUser : string[]
 }
 
 export interface leaveGroup {
@@ -121,8 +122,7 @@ export interface addminNotificationAddedUser {
     kind : sendTypes.addminNotificationAddedUser,
     groupid : string,
     groupName : string,
-    userid : string,
-    fullname : string
+    newmember : member[]
 }
 
 export interface leftGroup{
@@ -175,5 +175,6 @@ export interface member {
 
 export interface sendFetchedMsg {
     kind : sendTypes.sendFetchedMsg,
+    groupid : string
     messageList : message[]
 }
