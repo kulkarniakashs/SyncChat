@@ -1,5 +1,5 @@
 import {WebSocketServer} from 'ws';
-import {data,types,UserPayload,customWS, GroupInfo, sendTypes, sendData, message} from "@repo/types"
+import {data,types,UserPayload,customWS, GroupInfo, sendTypes, sendData, message, member} from "@repo/types"
 import { prisma } from '@repo/prisma';
 import { isAdmin, listGroups, listGroupsWithInfo,isAdminAndisPrivate } from './func';
 import jwt from "jsonwebtoken";
@@ -61,6 +61,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                 }
                 break;
             case types.createGroup: {
+                console.log("creating group")
                 console.log("message",data)
                 try {
                     let response = await prisma.groups.create({
@@ -120,6 +121,7 @@ wss.on('connection',async function(ws:customWS,request:any){
             }
             case types.addInGroup :{
                 try {
+                    const addInMembers : member[] = [];
                     console.log("in addInGroup")
                     if(! await isAdminAndisPrivate(ws.user.userid,data.groupid,ws.user.list)){
                         ws.send(JSON.stringify({
@@ -128,67 +130,84 @@ wss.on('connection',async function(ws:customWS,request:any){
                         } as sendData))
                         break;
                     }
-                    let temp = await prisma.memberships.create({
-                        data : {
-                            groupid : data.groupid ,
-                            userid : data.addUser,
-                            
-                        },
-                        select : {
-                            joinedAt : true,
-                            Group : {
-                                select : {
-                                    groupid : true,
-                                    groupName : true,
-                                    About : true,
-                                    isPrivate : true,
-                                    Admin : {
-                                        select : {
-                                            userid : true,
-                                            fullname : true,   
+                    await Promise.all(data.addUser.map(async(val)=>{
+                        try{
+                        let temp = await prisma.memberships.create({
+                            data : {
+                                groupid : data.groupid ,
+                                userid : val,
+                            },
+                            select : {
+                                joinedAt : true,
+                                Group : {
+                                    select : {
+                                        groupid : true,
+                                        groupName : true,
+                                        About : true,
+                                        isPrivate : true,
+                                        Admin : {
+                                            select : {
+                                                userid : true,
+                                                fullname : true,   
+                                            }
+                                        },
+                                        members : {
+                                            select : {
+                                                member : {
+                                                    select : {
+                                                        userid : true,
+                                                        fullname : true,
+                                                    }
+                                                }  
+                                            }
                                         }
-                                    },
-                                    members : {
-                                        select : {
-                                            member : {
-                                                select : {
-                                                    userid : true,
-                                                    fullname : true,
-                                                }
-                                            }  
-                                        }
+                                    }
+                                },
+                                member : {
+                                    select : {
+                                        userid : true,
+                                        fullname : true
                                     }
                                 }
                             }
+                        })
+                        let groupInfo : GroupInfo = {
+                            groupid : temp.Group.groupid,
+                            groupName : temp.Group.groupName,
+                            About : temp.Group.About,
+                            adminid : temp.Group.Admin.userid,
+                            adminname : temp.Group.Admin.fullname,
+                            joinedAt : temp.joinedAt,
+                            members : temp.Group.members.map(mem => mem.member),
+                            isPrivate : temp.Group.isPrivate
                         }
-                    })
-                    let groupInfo : GroupInfo = {
-                        groupid : temp.Group.groupid,
-                        groupName : temp.Group.groupName,
-                        About : temp.Group.About,
-                        adminid : temp.Group.Admin.userid,
-                        adminname : temp.Group.Admin.fullname,
-                        joinedAt : temp.joinedAt,
-                        members : temp.Group.members.map(mem => mem.member),
-                        isPrivate : temp.Group.isPrivate
-                    }
-                    console.log("temp",temp)           
-                    let addws = [...wss.clients].find((ws ) => (ws as customWS).user.userid === data.addUser);
-                    if(addws){
-                        PubSub.userSubscribe(addws as customWS,data.groupid);
-                        (addws as customWS).user.list.push(groupInfo);
-                        addws.send(JSON.stringify({
-                            kind : sendTypes.addedInGroup,
-                            groupInfo : {...groupInfo}
-                        } as sendData ))
-                        PubSub.getInfo();
-                    }
+                        let member : member = {
+                            fullname : temp.member.fullname,
+                            userid : temp.member.userid
+                        }
+                        addInMembers.push(member)
+                        console.log("temp",temp)           
+                        let addws = [...wss.clients].find((ws ) => (ws as customWS).user.userid === val);
+                        if(addws){
+                            console.log("addws found")
+                            PubSub.userSubscribe(addws as customWS,data.groupid);
+                            (addws as customWS).user.list.push(groupInfo);
+                            addws.send(JSON.stringify({
+                                kind : sendTypes.addedInGroup,
+                                groupInfo : {...groupInfo}
+                            } as sendData ))
+                            PubSub.getInfo();
+                        }}
+                        catch(e){
+                            console.log(e);
+                        }
+                    }))
+                    console.log("new member:",addInMembers)
                     ws.send(JSON.stringify({
                        kind : sendTypes.addminNotificationAddedUser,
-                       groupid: groupInfo.groupid,
-                       groupName : groupInfo.groupName,
-                       userid :data.addUser,
-                       fullname : (addws as customWS).user.fullname
+                       groupid:  data.groupid,
+                       newmember : addInMembers,
+                       groupName : data.groupName            
                     } as sendData)) 
                 }catch(e:any){
                     ws.send(JSON.stringify({
@@ -197,6 +216,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                     } as sendData),{binary: isBinary})
                 }
             }   break;
+        
             case types.removeUser :{
                 try {
                     let isAdmin1 : boolean = await isAdmin(ws.user.userid,data.groupid,ws.user.list);
@@ -367,7 +387,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                     take : 20,
                     skip : data.skip,
                     orderBy : {
-                        time : 'desc'
+                        time : 'asc'
                     }
                 })
 
@@ -383,7 +403,8 @@ wss.on('connection',async function(ws:customWS,request:any){
                })
                ws.send(JSON.stringify({
                 kind: sendTypes.sendFetchedMsg,
-                messageList : list
+                messageList : list,
+                groupid : data.groupid
                } as sendData))
             }
         }
