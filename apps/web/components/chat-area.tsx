@@ -15,7 +15,7 @@ function ChatArea({ sendWs }: { sendWs: (data: string) => void }) {
 
   return (
     <div className="flex flex-col max-h-screen h-full w-full">
-      <div className="p-4 border-b">
+      <div className=" border-b p-3">
       <GroupTitle sendWs={sendWs}/>
       </div>
       <div ref={messageListRef} className="flex-grow overflow-auto">

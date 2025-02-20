@@ -42,7 +42,6 @@ function MessageList({sendWs}: {sendWs : (data : string)=>void}) {
         >
           {message.authorid !== userDetails.userid && (
             <Avatar className="h-8 w-8 mr-2">
-              <AvatarImage src={`/placeholder.svg?height=32&width=32`} alt={message.fullname} />
               <AvatarFallback>{message.fullname.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
           )}

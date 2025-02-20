@@ -15,6 +15,7 @@ import { data, types } from '@repo/types'
 function createGroup({sendWs}: {sendWs : (data:string)=>void}) {
     const [groupName,setGroupName] = useState<string>() 
     const [About , setAbout ] = useState('')
+    const [open, setOpen] = useState(false)
     const handleSubmit = ()=>{
         console.log('creating Group')
        if(groupName != '' && About !=''){
@@ -29,7 +30,7 @@ function createGroup({sendWs}: {sendWs : (data:string)=>void}) {
        }
     }
   return (
-    <Dialog>
+    <Dialog open= {open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline">Create</Button>
       </DialogTrigger>

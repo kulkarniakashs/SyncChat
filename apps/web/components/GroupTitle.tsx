@@ -1,16 +1,17 @@
+"use client"
 import React from 'react'
 import { useSelector } from 'react-redux'
 import { RootState } from '~/app/store/store'
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
-import AddUsersDialog from './AddUsers'
+import  GroupOptionsMenu  from './group-option'
 function GroupTitle({sendWs}:{sendWs: (data:string)=>void}) {
+    const userDetails = useSelector((state :RootState)=>state.userDetails)
     const group = useSelector((state : RootState)=>state.selectedGroup.groupInfo)
   return (
-    <div className='w-full max-h-[5vh] grid grid-cols-10'>
+    <div className='w-full max-h-[10vh] h-10vh flex justify-between items-center'>
         <div className='col-span-7 flex justify-start items-center gap-4'>
         <div>
-           <Avatar className="h-12 w-12">
-              <AvatarImage src={group?.groupid} alt={group?.groupName} />
+           <Avatar className="">
               <AvatarFallback>{group?.groupName.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             </div>
@@ -20,8 +21,8 @@ function GroupTitle({sendWs}:{sendWs: (data:string)=>void}) {
             </div>
         </div>
 
-        <div className='col-span-1'>
-            <AddUsersDialog sendWs={sendWs}/>
+        <div className=''>
+            <GroupOptionsMenu sendWs={sendWs} isAdmin={group?.adminid === userDetails.userid} groupUsers={[]} onLeaveGroup={()=>{}} onRemoveUser={(e)=>{}}/>
         </div>
     </div>
   )

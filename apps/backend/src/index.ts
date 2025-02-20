@@ -2,7 +2,7 @@ import {WebSocketServer} from 'ws';
 import {data,types,UserPayload,customWS, GroupInfo, sendTypes, sendData, message, member} from "@repo/types"
 import { prisma } from '@repo/prisma';
 import { isAdmin, listGroups, listGroupsWithInfo,isAdminAndisPrivate } from './func';
-import jwt from "jsonwebtoken";
+import jwt, { JsonWebTokenError } from "jsonwebtoken";
 import PubSubManager from './PubSubManager';
 import {createClient} from "redis"
 
@@ -80,6 +80,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                             groupName : true,
                             About : true,
                             isPrivate : true,
+                            lastMessage : true,
                             Admin : {
                                 select : {
                                     userid : true,
@@ -102,6 +103,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                         adminname : response.Admin.fullname,
                         joinedAt : response.members[0]?.joinedAt,
                         isPrivate : response.isPrivate,
+                        lastMessage : response.lastMessage,
                         members : [{userid : ws.user.userid,fullname:ws.user.fullname}],
                     }
                     ws.user.list.push(groupInfo);
@@ -141,6 +143,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                                 joinedAt : true,
                                 Group : {
                                     select : {
+                                        lastMessage : true,
                                         groupid : true,
                                         groupName : true,
                                         About : true,
@@ -179,7 +182,8 @@ wss.on('connection',async function(ws:customWS,request:any){
                             adminname : temp.Group.Admin.fullname,
                             joinedAt : temp.joinedAt,
                             members : temp.Group.members.map(mem => mem.member),
-                            isPrivate : temp.Group.isPrivate
+                            isPrivate : temp.Group.isPrivate,
+                            lastMessage : temp.Group.lastMessage
                         }
                         let member : member = {
                             fullname : temp.member.fullname,
@@ -219,26 +223,47 @@ wss.on('connection',async function(ws:customWS,request:any){
         
             case types.removeUser :{
                 try {
+                    let arrayRemoved : string[] = [];
                     let isAdmin1 : boolean = await isAdmin(ws.user.userid,data.groupid,ws.user.list);
                     console.log("isAdmin",isAdmin1)
-                    if(isAdmin1){
-                       await prisma.memberships.delete({
-                        where : {
-                            userid_groupid: { 
-                                userid: data.delUser,
-                                groupid: data.groupid
+                    await Promise.all(data.delUser.map(async(val)=>{
+                        try {
+                            if(isAdmin1){
+                                const deleted =await prisma.memberships.delete({
+                                 where : {
+                                     userid_groupid: { 
+                                         userid: val,
+                                         groupid: data.groupid
+                                     }
+                                 },
+                                 select : {
+                                    member : {
+                                        select : {
+                                            userid : true,
+                                            fullname : true
+                                        }
+                                    }
+                                 }
+                                })
+                            console.log("deleted",deleted)
+                             let removeUser : customWS = [...wss.clients].find((x) => (x as customWS).user.userid === val) as customWS;
+                             arrayRemoved.push(val);
+                             removeUser?.send(JSON.stringify({kind: sendTypes.reportRemoved , groupid : data.groupid} as sendData))
+                             PubSub.userUnsubscribe(removeUser,data.groupid);
                             }
+                            else {
+                             throw new Error("You are not admin")
+                            }
+                        } catch (error) {
+                            console.log(error)
                         }
-                       })
-                    let removeUser : customWS = [...wss.clients].find((val) => (val as customWS).user.userid === data.delUser) as customWS;
-                    removeUser.send(JSON.stringify({kind: sendTypes.reportRemoved , groupid : data.groupid} as sendData))
-                    PubSub.userUnsubscribe(removeUser,data.groupid);
-                    ws.send(JSON.stringify({kind : sendTypes.successfullyRemoved,deleteUser: data.delUser,delName:removeUser.user.fullname,groupid:data.groupid}as sendData))
-                    break;
-                   }
-                   else {
-                    throw new Error("You are not admin")
-                   }
+                    }))
+                    console.log("removed user",arrayRemoved)
+                    ws.send(JSON.stringify({
+                        kind : sendTypes.addminNotificationRemovedUser,
+                        groupid : data.groupid,
+                        deletedUser : arrayRemoved
+                    }as sendData))
                 }catch(e:any){
                     console.log(e)
                     ws.send(JSON.stringify({
@@ -251,6 +276,16 @@ wss.on('connection',async function(ws:customWS,request:any){
 
             case types.leaveGroup : {
                 try {
+                    if((await isAdmin(ws.user.userid,data.groupid,ws.user.list))){
+                        await prisma.groups.update({
+                            where : {
+                                groupid : data.groupid
+                            },
+                            data : {
+                                adminId : data.newAdmin
+                            }
+                        })
+                    }
                     let response = await prisma.memberships.delete({
                         where : {
                             userid_groupid : {
@@ -330,6 +365,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                         groupName : true,
                         isPrivate : true,
                         About : true,
+                        lastMessage : true,
                         Admin : {
                             select : {
                                 userid : true,
@@ -358,6 +394,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                     groupName : response.groupName,
                     isPrivate : response.isPrivate,
                     joinedAt : response.members[0]?.joinedAt,
+                    lastMessage : response.lastMessage,
                     members : response.members.map(val=>val.member)
                 }
                 ws.send(JSON.stringify({

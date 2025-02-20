@@ -13,12 +13,19 @@ async function pushMessage() {
                 if(msg){
                     let message : message = JSON.parse(msg.element);
                     try {
-                        await prisma.messages.create({
+                        await prisma.groups.update({
+                            where : {
+                                groupid : message.groupid
+                            },
                             data : {
-                                content : message.text,
-                                authorid : message.authorid,
-                                groupid : message.groupid,
-                                time : message.time
+                                lastMessage : message.time,
+                                messages : {
+                                    create : {
+                                        content : message.text,
+                                        authorid : message.authorid,
+                                        time : message.time
+                                    }
+                                }
                             }
                         })
                     } catch (error) {

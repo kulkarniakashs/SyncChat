@@ -55,6 +55,7 @@ export async function listGroupsWithInfo(userid : string){
             groupName : true,
             About : true,
             isPrivate : true,
+            lastMessage : true,
             members : {
                 select : {
                     joinedAt : true,
@@ -85,6 +86,7 @@ export async function listGroupsWithInfo(userid : string){
             members.push(member.member);
         })
         let r : GroupInfo = {
+            lastMessage : gr.lastMessage,
             groupid: gr.groupid,
             groupName: gr.groupName,
             About: gr.About,

@@ -1,14 +1,15 @@
 "use client"
-import { data, GroupInfo, sendData, sendTypes, } from "@repo/types";
+import {  GroupInfoCount, sendData, sendTypes, } from "@repo/types";
 import { useState, useEffect, useCallback } from "react";
 import { checkUser } from "../action/checkUser";
-import { useDispatch } from "react-redux";
-import { pushGroup, pushOneGr } from "../store/groupList";
+import { useDispatch, useSelector } from "react-redux";
+import { pushGroup, pushOneGr ,deleteMembers, updateCount, updateDate} from "../store/groupList";
 import { detailsUpdate } from "../store/userDetails";
 import { pushMessage, pushMessageList } from "../store/messageList";
-import { group } from "console";
+import { RootState } from "../store/store";
 export function useSocket() : {ws : WebSocket | null,  sendWs: (data: string) => void} {
     console.log("useSocket")
+    const selectedGroup = useSelector((state: RootState)=> state.selectedGroup.groupInfo)
     const [ws,setws] = useState<WebSocket | null>(null)
     const dispatch = useDispatch()
     useEffect(() => {
@@ -38,14 +39,32 @@ export function useSocket() : {ws : WebSocket | null,  sendWs: (data: string) =>
                 sendNotification()
                 // dispatch(wsUpdate({ws : websocket}));
             }
-            websocket.onmessage = (msg)=>{
+            
+        }
+        wsConnection()
+    }, [])
+
+    useEffect(()=>{
+        if(ws){
+            ws.onmessage = (msg)=>{
                 let data :sendData= JSON.parse(msg.data)
                 switch (data.kind){
                     case sendTypes.groupList : {
-                        dispatch(pushGroup({list : data.groupList}))
+                        dispatch(pushGroup({list: data.groupList as GroupInfoCount[]}))
                         break;
                     }
                     case sendTypes.chat : {
+                        console.log(selectedGroup)
+                        if(!selectedGroup){
+                            console.log("in updateCount !")
+                            dispatch(updateCount({groupid : data.message.groupid}))
+                        }
+                        else if(selectedGroup?.groupid !== data.message.groupid){
+                            console.log(selectedGroup?.groupid !== data.message.groupid)
+                            console.log("in updateCount")
+                            dispatch(updateCount({groupid : data.message.groupid})) 
+                        }
+                        dispatch(updateDate({groupid : data.message.groupid, time : data.message.time}))
                         dispatch(pushMessage({groupid : data.message.groupid, msg : data.message}))
                         break;
                     }
@@ -55,7 +74,7 @@ export function useSocket() : {ws : WebSocket | null,  sendWs: (data: string) =>
                         break;
                     }
                     case sendTypes.createdGroup : {
-                        dispatch(pushOneGr({group : data.groupInfo}))
+                        dispatch(pushOneGr({group : data.groupInfo as GroupInfoCount}))
                         if ("Notification" in window) {
                             Notification.requestPermission().then((permission) => {
                               if (permission === "granted") {
@@ -70,24 +89,13 @@ export function useSocket() : {ws : WebSocket | null,  sendWs: (data: string) =>
                         }
                         break;
                     }
+                    case sendTypes.addminNotificationRemovedUser: {
+                        console.log(data)
+                        dispatch(deleteMembers({groupid : data.groupid,delUser : data.deletedUser}))
+                        break;
+                    }
 
                     case sendTypes.addminNotificationAddedUser : {
-                        let name : string = '';
-                        data.newmember.forEach(val=>name = name+val.fullname+',')
-                        console.log("name",name)
-                        console.log(data)
-                        if ("Notification" in window) {
-                            Notification.requestPermission().then((permission) => {
-                              if (permission === 'granted') {
-                                  new Notification(data.groupName, {
-                                    body: `Successfull Added User\n${name}`,
-                                    icon: "/icon.png", // Optional icon
-                                  });
-                              }
-                            });
-                          } else {
-                            console.log("Browser does not support notifications.");
-                          }
                         break;
                     }
 
@@ -97,8 +105,7 @@ export function useSocket() : {ws : WebSocket | null,  sendWs: (data: string) =>
                 }
             }
         }
-        wsConnection()
-    }, [])
+    },[ws,selectedGroup])
 
     const sendWs  = useCallback((data : string)=>{
         console.log("in sendWs")

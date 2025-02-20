@@ -32,6 +32,7 @@ model Groups{
   adminId String
   messages Messages[]
   members Memberships[]
+  lastMessage DateTime @default(now())
   isPrivate Boolean @default(false)
 }
 

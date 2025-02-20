@@ -19,6 +19,7 @@ interface User {
 }
 
  function AddUsersDialog({sendWs}: {sendWs:(data:string)=>void}) {
+  const [open,setopen] = useState(false)
   const [selectedUsers, setSelectedUsers] = useState<User[]>([])
   const [searchTerm, setSearchTerm] = useState('')
   const [Search,setSearch] = useState('')
@@ -65,9 +66,9 @@ interface User {
   }
 
   return (
-    <Dialog>
+    <Dialog open= {open} onOpenChange={setopen}>
       <DialogTrigger asChild>
-        <Button variant="outline">
+        <Button variant="ghost">
           <UserPlus className="mr-2 h-4 w-4" />
           Add Users
         </Button>
@@ -94,7 +95,6 @@ interface User {
                 onClick={() => toggleUserSelection(user)}
               >
                 <Avatar>
-                  <AvatarImage src={user.fullname} alt={user.fullname} />
                   <AvatarFallback>{user.fullname.slice(0, 2).toUpperCase()}</AvatarFallback>
                 </Avatar>
                 <div className="flex-1 space-y-1">

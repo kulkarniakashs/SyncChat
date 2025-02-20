@@ -35,7 +35,7 @@ export interface sendMessage {
 export interface removeUser {
     kind: types.removeUser,
     groupid: string,
-    delUser : string
+    delUser : string[]
 }
 
 export interface addInGroup {
@@ -47,7 +47,8 @@ export interface addInGroup {
 
 export interface leaveGroup {
     kind : types.leaveGroup,
-    groupid : string
+    groupid : string,
+    newAdmin? : string
 }
 
 export interface createGroup {
@@ -101,7 +102,8 @@ export enum sendTypes {
     leftGroup,
     addminNotificationAddedUser,
     informActive,
-    sendFetchedMsg
+    sendFetchedMsg,
+    addminNotificationRemovedUser
 }
 
 export interface GroupInfo {
@@ -112,11 +114,17 @@ export interface GroupInfo {
     adminname: string;
     joinedAt: Date | undefined;
     members : member[],
+    lastMessage : Date
     isPrivate : boolean
 }
 
-export type sendData = sendFetchedMsg |sendAddedinGr | sendCreatedGr | sendGroupList | chat | sendError | reportRemoved | successfullyRemoved | leftGroup | addminNotificationAddedUser 
+export type sendData =addminNotificationRemovedUser| sendFetchedMsg |sendAddedinGr | sendCreatedGr | sendGroupList | chat | sendError | reportRemoved | successfullyRemoved | leftGroup | addminNotificationAddedUser 
 
+export interface addminNotificationRemovedUser {
+    kind : sendTypes.addminNotificationRemovedUser,
+    groupid : string,
+    deletedUser : string[]
+}
 
 export interface addminNotificationAddedUser {
     kind : sendTypes.addminNotificationAddedUser,
@@ -140,7 +148,7 @@ export interface successfullyRemoved {
 
 export interface reportRemoved {
     kind : sendTypes.reportRemoved,
-    groupid : string
+    groupid : string,
 }
 
 export interface sendAddedinGr {
@@ -177,4 +185,9 @@ export interface sendFetchedMsg {
     kind : sendTypes.sendFetchedMsg,
     groupid : string
     messageList : message[]
+}
+
+export interface GroupInfoCount extends GroupInfo {
+    date : Date,
+    count : number
 }
