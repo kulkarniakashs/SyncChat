@@ -123,7 +123,8 @@ export type sendData =addminNotificationRemovedUser| sendFetchedMsg |sendAddedin
 export interface addminNotificationRemovedUser {
     kind : sendTypes.addminNotificationRemovedUser,
     groupid : string,
-    deletedUser : string[]
+    groupName : string,
+    deletedUser : member[]
 }
 
 export interface addminNotificationAddedUser {
@@ -149,6 +150,7 @@ export interface successfullyRemoved {
 export interface reportRemoved {
     kind : sendTypes.reportRemoved,
     groupid : string,
+    groupName : string
 }
 
 export interface sendAddedinGr {
@@ -188,6 +190,5 @@ export interface sendFetchedMsg {
 }
 
 export interface GroupInfoCount extends GroupInfo {
-    date : Date,
     count : number
 }

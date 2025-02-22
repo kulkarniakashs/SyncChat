@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { memo, useState } from 'react'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 import { Button } from "./ui/button"
@@ -9,7 +9,7 @@ import { LogOut } from 'lucide-react'
 import { useSelector } from 'react-redux'
 import { RootState } from '~/app/store/store'
 import { data,types } from '@repo/types'
-export function LeaveGroupDialog({sendWs}:{sendWs:(data:string)=>void}) {
+function LeaveGroupDialog({sendWs}:{sendWs:(data:string)=>void}) {
   const groupInfo = useSelector((state: RootState) => state.selectedGroup.groupInfo)
   const currentUserId = useSelector((state: RootState) => state.userDetails.userid)
   const [open, setOpen] = useState(false)
@@ -93,3 +93,5 @@ export function LeaveGroupDialog({sendWs}:{sendWs:(data:string)=>void}) {
     </Dialog>
   )
 }
+
+export default memo(LeaveGroupDialog)

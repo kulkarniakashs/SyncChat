@@ -28,6 +28,7 @@ function createGroup({sendWs}: {sendWs : (data:string)=>void}) {
        else {
         alert('Group name and About should not be empty');
        }
+      setOpen(false);
     }
   return (
     <Dialog open= {open} onOpenChange={setOpen}>
@@ -56,7 +57,7 @@ function createGroup({sendWs}: {sendWs : (data:string)=>void}) {
           </div>
         </div>
         <DialogFooter>
-          <Button type='submit' onClick={handleSubmit}>Save changes</Button>
+          <Button type='submit' onClick={handleSubmit}>Create</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

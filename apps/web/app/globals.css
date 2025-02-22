@@ -109,3 +109,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+.border-class{
+  border: 1px solid gray;
+}
+

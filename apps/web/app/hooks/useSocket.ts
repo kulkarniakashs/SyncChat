@@ -1,9 +1,9 @@
 "use client"
 import {  GroupInfoCount, sendData, sendTypes, } from "@repo/types";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, use } from "react";
 import { checkUser } from "../action/checkUser";
 import { useDispatch, useSelector } from "react-redux";
-import { pushGroup, pushOneGr ,deleteMembers, updateCount, updateDate} from "../store/groupList";
+import { pushGroup, pushOneGr ,deleteMembers, updateCount, updateDate,deleteGroup, addMembers} from "../store/groupList";
 import { detailsUpdate } from "../store/userDetails";
 import { pushMessage, pushMessageList } from "../store/messageList";
 import { RootState } from "../store/store";
@@ -12,6 +12,20 @@ export function useSocket() : {ws : WebSocket | null,  sendWs: (data: string) =>
     const selectedGroup = useSelector((state: RootState)=> state.selectedGroup.groupInfo)
     const [ws,setws] = useState<WebSocket | null>(null)
     const dispatch = useDispatch()
+    const sendNotification = useCallback((title: string,body : string)=>{
+        if ("Notification" in window) {
+            Notification.requestPermission().then((permission) => {
+              if (permission === "granted") {
+                  new Notification(title, {
+                    body: body,
+                    icon: "/icon.png", // Optional icon
+                  });
+              }
+            });
+          } else {
+            console.log("Browser does not support notifications.");
+        }
+    },[])
     useEffect(() => {
         async function wsConnection() {
             console.log("useSocket-effect")
@@ -21,22 +35,6 @@ export function useSocket() : {ws : WebSocket | null,  sendWs: (data: string) =>
             websocket.onopen =()=>{ 
                 console.log("connection established")
                 setws(websocket)
-                const sendNotification = () => {
-                    if ("Notification" in window) {
-                      Notification.requestPermission().then((permission) => {
-                        if (permission === "granted") {
-                            new Notification("Hello!", {
-                              body: "This is your Windows notification.",
-                              icon: "/icon.png", // Optional icon
-                            });
-                        }
-                      });
-                    } else {
-                      console.log("Browser does not support notifications.");
-                    }
-                  };
-
-                sendNotification()
                 // dispatch(wsUpdate({ws : websocket}));
             }
             
@@ -75,29 +73,58 @@ export function useSocket() : {ws : WebSocket | null,  sendWs: (data: string) =>
                     }
                     case sendTypes.createdGroup : {
                         dispatch(pushOneGr({group : data.groupInfo as GroupInfoCount}))
-                        if ("Notification" in window) {
-                            Notification.requestPermission().then((permission) => {
-                              if (permission === "granted") {
-                                  new Notification(data.groupInfo.groupName, {
-                                    body: "Group is Successfully Created.",
-                                    icon: "/icon.png", // Optional icon
-                                  });
-                              }
-                            });
-                          } else {
-                            console.log("Browser does not support notifications.");
-                        }
+                        sendNotification('Created New Group',`${data.groupInfo.groupName} is crated and you are admin of the group`)
                         break;
                     }
                     case sendTypes.addminNotificationRemovedUser: {
                         console.log(data)
+                        let name = '';
+                        data.deletedUser.forEach((user,index)=>{
+                            name += user.fullname
+                            if(index !== data.deletedUser.length-1){
+                                name += ','
+                            }
+                        })
+                        sendNotification("You are removed by the admin",`${name} are removed from ${data.groupName}`)                        
                         dispatch(deleteMembers({groupid : data.groupid,delUser : data.deletedUser}))
                         break;
                     }
 
-                    case sendTypes.addminNotificationAddedUser : {
+                    case sendTypes.addminNotificationAddedUser : 
+                    {
+                        let name = '';
+                        data.newmember.forEach((user,index)=>{
+                            name += user.fullname
+                            if(index !== data.newmember.length-1){
+                                name += ','
+                            }
+                        })
+                        dispatch(addMembers({groupid : data.groupid, members : data.newmember}))
+                        sendNotification("You added new memebers in group",`${name} are added in ${data.groupName}`)
                         break;
                     }
+
+                    case sendTypes.addedInGroup : {
+                        dispatch(pushOneGr({group : {...data.groupInfo,count : 0}}))
+                        sendNotification("Added in Group",`You are added in ${data.groupInfo.groupName}`)
+                        break;
+                    }
+                    case sendTypes.leftGroup : {
+                        dispatch(deleteGroup({groupid : data.groupid}))
+                        sendNotification("Left Group",`You are left from ${data.groupName}`)
+                        break;
+                    }
+
+                    case sendTypes.reportRemoved : {
+                        dispatch(deleteGroup({groupid : data.groupid}))
+                        sendNotification("You are removed by  the admin",`Group ${data.groupName} is removed`)
+                        break;
+                    }
+                    case sendTypes.sendError : {
+                        alert(data.msg)
+                        break;
+                    }
+                    
 
                     default : {
                         console.log(data)

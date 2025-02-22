@@ -1,5 +1,5 @@
 "use client"
-import React,{ useEffect, useState } from 'react'
+import React,{ memo, useEffect, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "./ui/dialog"
 import { Button } from "./ui/button"
 import { ScrollArea } from "./ui/scroll-area"
@@ -105,4 +105,4 @@ function RemoveUserDialog({sendWs}: {sendWs:(data:string)=>void}) {
   )
 }
 
-export default RemoveUserDialog
+export default memo(RemoveUserDialog)

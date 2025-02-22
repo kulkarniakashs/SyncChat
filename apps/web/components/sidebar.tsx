@@ -1,5 +1,5 @@
 'use client'
-import React,{ useState } from 'react'
+import React,{ use, useState } from 'react'
 import { ScrollArea } from "./ui/scroll-area"
 import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { Input } from "./ui/input"
@@ -10,12 +10,14 @@ import { GroupInfo, GroupInfoCount } from '@repo/types'
 import { update } from '~/app/store/selectedGroup'
 import CreateGroup from './create-Group'
 import { zeroCount } from '~/app/store/groupList'
+import PrivateChat from './private-chat'
 function Sidebar({sendWs}: {sendWs : (data:string)=>void}) {
+  console.log('Sidebar')
   const groups = useSelector((state : RootState)=>state.groupList.groupList)
   const selectedGroup = useSelector((state:RootState)=>state.selectedGroup.groupInfo)
   const dispatch = useDispatch();
   const [searchTerm, setSearchTerm] = useState('')
-
+  const userDetails = useSelector((state: RootState) => state.userDetails.fullname)
   let filteredGroups = groups.filter(group => 
     group.groupName.toLowerCase().includes(searchTerm.toLowerCase())
   )
@@ -34,7 +36,7 @@ function Sidebar({sendWs}: {sendWs : (data:string)=>void}) {
   }
 
   return (
-    <div className="w-full min-w-[30vw] md:w-80 h-screen border-r bg-background flex flex-col">
+    <div className="w-full min-w-[30vw] md:w-80 h-screen border-r bg-background flex flex-col relative">
       <div className="p-4 border-b flex  items-center justify-between max-h-10vh h-[10vh]">
         <h2 className="text-xl font-semibold mb-2">Chats</h2>
         <div className="flex items-center space-x-2">
@@ -55,7 +57,7 @@ function Sidebar({sendWs}: {sendWs : (data:string)=>void}) {
         {filteredGroups.map((group) => (
           <div
             key={group.groupid}
-            className={`flex items-center justify-between p-4 cursor-pointer  transition-colors ${(selectedGroup?.groupid === group.groupid) ? 'bg-gray-200': 'hover:bg-muted/50'}`}
+            className={`flex items-center justify-between p-2 cursor-pointer border-class transition-colors ${(selectedGroup?.groupid === group.groupid) ? 'bg-gray-200': 'hover:bg-muted/50'}`}
             onClick={() => handleGroupClick(group)}
           >
             <div className='flex items-center justify-start p-4'>
@@ -63,7 +65,7 @@ function Sidebar({sendWs}: {sendWs : (data:string)=>void}) {
               <AvatarFallback>{group.groupName.slice(0, 2).toUpperCase()}</AvatarFallback>
             </Avatar>
             <div className="ml-4 space-y-1">
-              <p className="text-sm font-medium leading-none">{group.groupName}</p>
+              <p className="text-sm font-medium leading-none">{group.isPrivate ? group.groupName.replace(userDetails||'','').replace('&','') :group.groupName}</p>
               <p className="text-sm text-muted-foreground">{group.About}</p>
             </div>
             </div>
@@ -75,6 +77,7 @@ function Sidebar({sendWs}: {sendWs : (data:string)=>void}) {
           </div>
         ))}
       </ScrollArea>
+      <PrivateChat sendWs={sendWs}/>
     </div>
   )
 }

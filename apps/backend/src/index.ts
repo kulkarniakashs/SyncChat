@@ -223,9 +223,10 @@ wss.on('connection',async function(ws:customWS,request:any){
         
             case types.removeUser :{
                 try {
-                    let arrayRemoved : string[] = [];
+                    let arrayRemoved : member[] = [];
                     let isAdmin1 : boolean = await isAdmin(ws.user.userid,data.groupid,ws.user.list);
                     console.log("isAdmin",isAdmin1)
+                    let groupName = ws.user.list.find(val => val.groupid === data.groupid)?.groupName;
                     await Promise.all(data.delUser.map(async(val)=>{
                         try {
                             if(isAdmin1){
@@ -247,8 +248,8 @@ wss.on('connection',async function(ws:customWS,request:any){
                                 })
                             console.log("deleted",deleted)
                              let removeUser : customWS = [...wss.clients].find((x) => (x as customWS).user.userid === val) as customWS;
-                             arrayRemoved.push(val);
-                             removeUser?.send(JSON.stringify({kind: sendTypes.reportRemoved , groupid : data.groupid} as sendData))
+                             arrayRemoved.push(deleted.member);
+                             removeUser?.send(JSON.stringify({kind: sendTypes.reportRemoved , groupid : data.groupid, groupName :groupName } as sendData))
                              PubSub.userUnsubscribe(removeUser,data.groupid);
                             }
                             else {
@@ -262,7 +263,8 @@ wss.on('connection',async function(ws:customWS,request:any){
                     ws.send(JSON.stringify({
                         kind : sendTypes.addminNotificationRemovedUser,
                         groupid : data.groupid,
-                        deletedUser : arrayRemoved
+                        deletedUser : arrayRemoved,
+                        groupName : groupName
                     }as sendData))
                 }catch(e:any){
                     console.log(e)
@@ -398,9 +400,16 @@ wss.on('connection',async function(ws:customWS,request:any){
                     members : response.members.map(val=>val.member)
                 }
                 ws.send(JSON.stringify({
-                    kind : sendTypes.addedInGroup,
+                    kind : sendTypes.createdGroup,
                     groupInfo : grinfo
                 } as sendData))
+                let user2 = [...wss.clients].find(ws => (ws as customWS).user.userid === data.userid)
+                if(user2){
+                    user2.send(JSON.stringify({
+                        kind : sendTypes.addedInGroup,
+                        groupInfo : grinfo
+                    } as sendData ))
+                }
                 break;
             }
 

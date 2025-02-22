@@ -17,7 +17,8 @@ export async function fetchUsers(search :string){
             email : true,
             userid : true,
             fullname : true
-        }
+        },
+        take : 25
 
     })
     return list || []

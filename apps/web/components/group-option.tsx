@@ -4,7 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Button } from "./ui/button"
 import { MoreVertical } from 'lucide-react'
 import RemoveUserDialog  from './remove-user-dialog'
-import { LeaveGroupDialog } from './leave-group'
+import  LeaveGroupDialog  from './leave-group'
 import AddUsers from './AddUsers'
 
 interface User {
@@ -15,13 +15,10 @@ interface User {
 
 interface GroupOptionsMenuProps {
   isAdmin: boolean
-  groupUsers: User[]
-  onRemoveUser: (userId: string) => void
-  onLeaveGroup: () => void,
   sendWs : (data:string)=>void
 }
 
-function GroupOptionsMenu({ isAdmin, groupUsers, onRemoveUser, onLeaveGroup ,sendWs}: GroupOptionsMenuProps) {
+function GroupOptionsMenu({ isAdmin ,sendWs}: GroupOptionsMenuProps) {
   const [open, setOpen] = useState(false)
 
   return (
