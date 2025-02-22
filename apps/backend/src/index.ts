@@ -403,12 +403,14 @@ wss.on('connection',async function(ws:customWS,request:any){
                     kind : sendTypes.createdGroup,
                     groupInfo : grinfo
                 } as sendData))
+                ws.user.list.push(grinfo);
                 let user2 = [...wss.clients].find(ws => (ws as customWS).user.userid === data.userid)
                 if(user2){
                     user2.send(JSON.stringify({
                         kind : sendTypes.addedInGroup,
                         groupInfo : grinfo
-                    } as sendData ))
+                    } as sendData ));
+                    (user2 as customWS).user.list.push(grinfo)
                 }
                 break;
             }
