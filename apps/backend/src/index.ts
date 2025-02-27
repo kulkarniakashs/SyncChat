@@ -107,6 +107,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                         members : [{userid : ws.user.userid,fullname:ws.user.fullname}],
                     }
                     ws.user.list.push(groupInfo);
+                    PubSub.userSubscribe(ws,groupInfo.groupid);
                     console.log("response of group create",response)
                     ws.send(JSON.stringify({
                         kind : sendTypes.createdGroup,

@@ -4,7 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "./ui/avatar"
 import { useDispatch, useSelector } from "react-redux"
 import { RootState } from "~/app/store/store"
 import { data, types } from "@repo/types";
-import React, { useCallback, useDebugValue, useEffect, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import { Button } from "./ui/button"
 import { ChangeIsLoading } from "~/app/store/messageList"
 import { Loader2, Download } from "lucide-react"
