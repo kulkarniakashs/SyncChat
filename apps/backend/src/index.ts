@@ -435,7 +435,7 @@ wss.on('connection',async function(ws:customWS,request:any){
                     take : 20,
                     skip : data.skip,
                     orderBy : {
-                        time : 'asc'
+                        time : 'desc'
                     }
                 })
 
@@ -449,9 +449,10 @@ wss.on('connection',async function(ws:customWS,request:any){
                 }
                 return r
                })
+               let newList = list.reverse()
                ws.send(JSON.stringify({
                 kind: sendTypes.sendFetchedMsg,
-                messageList : list,
+                messageList : newList,
                 groupid : data.groupid
                } as sendData))
             }
