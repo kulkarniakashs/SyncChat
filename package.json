@@ -24,6 +24,7 @@
   "dependencies": {
     "@repo/types": "^1.0.0",
     "prisma": "^6.3.1",
-    "redis": "^4.7.0"
+    "redis": "^4.7.0",
+    "typescript": "^5.7.3"
   }
 }

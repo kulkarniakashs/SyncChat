@@ -30,7 +30,7 @@ export function useSocket() : {ws : WebSocket | null,  sendWs: (data: string) =>
         async function wsConnection() {
             console.log("useSocket-effect")
             const detail= await checkUser();
-            const websocket= new WebSocket(`ws://localhost:8080?token=${detail?.token}`)
+            const websocket= new WebSocket(`${process.env.NEXT_PUBLIC_WEBSOCKET_URL}?token=${detail?.token}`)
             dispatch(detailsUpdate({userid : detail?.user.userid ?? '', fullname : detail?.user.fullname ?? ''}))
             websocket.onopen =()=>{ 
                 console.log("connection established")
